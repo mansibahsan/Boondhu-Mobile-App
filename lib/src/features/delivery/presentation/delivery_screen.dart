@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 
 class DeliveryScreen extends StatelessWidget {
@@ -11,7 +12,7 @@ class DeliveryScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(context),
-            _buildDeliveryTypes(),
+            _buildDeliveryTypes(context), // FIX: pass context
             _buildSectionHeader('Active Deliveries'),
             _buildActiveDeliveries(),
             _buildSectionHeader('Delivery Zones & SLA'),
@@ -75,7 +76,7 @@ class DeliveryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDeliveryTypes() {
+  Widget _buildDeliveryTypes(BuildContext context) {
     final types = [
       {'name': 'Parcel', 'icon': Icons.inventory_2, 'desc': 'Send packages'},
       {'name': 'Document', 'icon': Icons.description, 'desc': 'Secure docs'},
@@ -97,28 +98,33 @@ class DeliveryScreen extends StatelessWidget {
         itemCount: types.length,
         itemBuilder: (context, index) {
           final t = types[index];
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.deliveryPurple.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.deliveryPurple.withOpacity(0.15)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(t['icon'] as IconData, color: AppColors.deliveryPurple, size: 28),
-                const SizedBox(height: 8),
-                Text(
-                  t['name'] as String,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                Text(
-                  t['desc'] as String,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                ),
-              ],
+          return GestureDetector(
+            onTap: () {
+              context.push('/parcel-info', extra: t['name'] as String);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.deliveryPurple.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.deliveryPurple.withOpacity(0.15)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(t['icon'] as IconData, color: AppColors.deliveryPurple, size: 28),
+                  const SizedBox(height: 8),
+                  Text(
+                    t['name'] as String,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text(
+                    t['desc'] as String,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -182,7 +188,6 @@ class DeliveryScreen extends StatelessWidget {
           ),
           child: Column(
             children: [
-              // Top row: ID and status badge
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -208,7 +213,6 @@ class DeliveryScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              // Route visualization
               Row(
                 children: [
                   Column(

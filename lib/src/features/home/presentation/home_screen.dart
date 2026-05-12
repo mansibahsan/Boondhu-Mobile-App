@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../profile/presentation/profile_screen.dart';
+import '../../orders/presentation/orders_screen.dart'; // ADDED
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,21 +14,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
+  // List of screens to show based on the bottom navigation index
+  final List<Widget> _screens = [
+    const _HomeContent(), // Home Dashboard content
+    const OrdersScreen(), // --- ADDED ORDERS SCREEN ---
+    const Center(child: Text('Wallet Screen')), // Placeholder
+    const ProfileScreen(), // Profile Screen
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            _buildBannerCarousel(),
-            _buildServiceGrid(),
-            _buildSectionHeader('Trending Services'),
-            _buildTrendingServices(),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+      // Body now switches based on _selectedIndex
+      body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
@@ -38,6 +38,27 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.shopping_bag_outlined), label: 'Orders'),
           BottomNavigationBarItem(icon: Icon(Icons.wallet_outlined), label: 'Wallet'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+
+// I moved the original Home UI into this private class to keep the code clean
+class _HomeContent extends StatelessWidget {
+  const _HomeContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildHeader(context),
+          _buildBannerCarousel(),
+          _buildServiceGrid(context),
+          _buildSectionHeader('Trending Services'),
+          _buildTrendingServices(),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -168,9 +189,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              const CircleAvatar(
-                backgroundColor: Colors.white24,
-                child: Icon(Icons.notifications_none, color: Colors.white),
+              GestureDetector(
+                onTap: () => context.push('/notifications'),
+                child: const CircleAvatar(
+                  backgroundColor: Colors.white24,
+                  child: Icon(Icons.notifications_none, color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -252,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildServiceGrid() {
+  Widget _buildServiceGrid(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: GridView.count(
@@ -262,23 +286,18 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
         children: [
-          _serviceCard('e-Store', Icons.shopping_bag, AppColors.storeBlue, '/store'),
-          _serviceCard('e-Delivery', Icons.delivery_dining, AppColors.deliveryPurple, '/delivery'),
-          _serviceCard('e-Services', Icons.build, AppColors.servicesGreen, '/services'),
-          _serviceCard('e-Kitchen', Icons.restaurant, Colors.orange, '/kitchen'),
+          _serviceCard(context, 'e-Store', Icons.shopping_bag, AppColors.storeBlue, '/store'),
+          _serviceCard(context, 'e-Delivery', Icons.delivery_dining, AppColors.deliveryPurple, '/delivery'),
+          _serviceCard(context, 'e-Services', Icons.build, AppColors.servicesGreen, '/services'),
+          _serviceCard(context, 'e-Kitchen', Icons.restaurant, Colors.orange, '/kitchen'),
         ],
       ),
     );
   }
 
-  // Now accepts a route! Tapping navigates to the new screen.
-  Widget _serviceCard(String title, IconData icon, Color color, String? route) {
+  Widget _serviceCard(BuildContext context, String title, IconData icon, Color color, String route) {
     return GestureDetector(
-      onTap: () {
-        if (route != null) {
-          context.push(route);
-        }
-      },
+      onTap: () => context.push(route),
       child: Container(
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),

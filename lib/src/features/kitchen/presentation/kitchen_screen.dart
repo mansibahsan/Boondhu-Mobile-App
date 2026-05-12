@@ -1,21 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../domain/meal_model.dart';
+import '../../../core/providers/search_provider.dart';
 
-class KitchenScreen extends StatelessWidget {
+class KitchenScreen extends ConsumerWidget {
   const KitchenScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchQuery = ref.watch(kitchenSearchProvider).toLowerCase();
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(context),
+            _buildHeader(context, ref),
             _buildCuisineChips(),
-            _buildSectionHeader('Daily Specials'),
-            _buildDailySpecials(),
-            _buildSectionHeader('Popular Meals'),
-            _buildPopularMeals(),
+            if (searchQuery.isEmpty) ...[
+              _buildSectionHeader('Daily Specials'),
+              _buildDailySpecials(context),
+            ],
+            _buildSectionHeader(searchQuery.isEmpty ? 'Popular Meals' : 'Search Results'),
+            _buildFilteredMeals(context, searchQuery),
             const SizedBox(height: 20),
           ],
         ),
@@ -23,7 +31,7 @@ class KitchenScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 60, 16, 24),
       decoration: BoxDecoration(
@@ -62,10 +70,17 @@ class KitchenScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           TextField(
+            onChanged: (value) => ref.read(kitchenSearchProvider.notifier).state = value,
             decoration: InputDecoration(
               hintText: 'Search for meals...',
               hintStyle: const TextStyle(color: Colors.grey),
               prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              suffixIcon: ref.watch(kitchenSearchProvider).isNotEmpty 
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.grey),
+                    onPressed: () => ref.read(kitchenSearchProvider.notifier).state = "",
+                  )
+                : null,
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
@@ -126,11 +141,26 @@ class KitchenScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDailySpecials() {
+  Widget _buildDailySpecials(BuildContext context) {
     final specials = [
-      {'name': 'Kacchi Biryani', 'price': '৳350', 'time': '45 min', 'discount': '15% OFF'},
-      {'name': 'Hilsha Fish Curry', 'price': '৳480', 'time': '30 min', 'discount': '10% OFF'},
-      {'name': 'Beef Bhuna', 'price': '৳280', 'time': '35 min', 'discount': '20% OFF'},
+      MealModel(
+        id: '1',
+        name: 'Kacchi Biryani',
+        kitchenName: 'Grand Mughal Kitchen',
+        price: '৳350',
+        rating: 4.9,
+        time: '45 min',
+        description: 'Traditional slow-cooked mutton biryani with aromatic basmati rice and secret spices.',
+      ),
+      MealModel(
+        id: '2',
+        name: 'Hilsha Fish Curry',
+        kitchenName: 'River Side Foods',
+        price: '৳480',
+        rating: 4.8,
+        time: '30 min',
+        description: 'Fresh Hilsha fish cooked in mustard gravy with green chilies and authentic flavors.',
+      ),
     ];
 
     return SizedBox(
@@ -141,89 +171,91 @@ class KitchenScreen extends StatelessWidget {
         itemCount: specials.length,
         itemBuilder: (context, index) {
           final s = specials[index];
-          return Container(
-            width: 220,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Food image placeholder with discount badge
-                Stack(
-                  children: [
-                    Container(
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.restaurant_menu, size: 36, color: Colors.orange),
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          s['discount']!,
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          return GestureDetector(
+            onTap: () => context.push('/meal-detail', extra: s),
+            child: Container(
+              width: 220,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
                     children: [
-                      Text(
-                        s['name']!,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      Container(
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.restaurant_menu, size: 36, color: Colors.orange),
+                        ),
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            s['price']!,
-                            style: const TextStyle(
-                              color: Colors.orange,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          Row(
-                            children: [
-                              Icon(Icons.timer_outlined, size: 14, color: Colors.grey[500]),
-                              Text(
-                                ' ${s['time']}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                              ),
-                            ],
+                          child: const Text(
+                            'HOT',
+                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              s.price,
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Icon(Icons.timer_outlined, size: 14, color: Colors.grey[500]),
+                                Text(
+                                  ' ${s.time}',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -231,102 +263,111 @@ class KitchenScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPopularMeals() {
-    final meals = [
-      {'name': 'Chicken Fried Rice', 'kitchen': 'Mama Kitchen', 'price': '৳180', 'rating': 4.8},
-      {'name': 'Mutton Tehari', 'kitchen': 'Royal Foods', 'price': '৳320', 'rating': 4.9},
-      {'name': 'Fish Curry Set', 'kitchen': 'Bhai Bhai Kitchen', 'price': '৳250', 'rating': 4.7},
-      {'name': 'Chicken Biryani', 'kitchen': 'Star Kitchen', 'price': '৳220', 'rating': 4.6},
+  Widget _buildFilteredMeals(BuildContext context, String query) {
+    final allMeals = [
+      MealModel(
+        id: '1', name: 'Kacchi Biryani', kitchenName: 'Grand Mughal Kitchen', price: '৳350', rating: 4.9, time: '45 min', description: 'Traditional mutton biryani.',
+      ),
+      MealModel(
+        id: '2', name: 'Hilsha Fish Curry', kitchenName: 'River Side Foods', price: '৳480', rating: 4.8, time: '30 min', description: 'Fresh Hilsha fish.',
+      ),
+      MealModel(
+        id: '3', name: 'Chicken Fried Rice', kitchenName: 'Mama Kitchen', price: '৳180', rating: 4.8, time: '20 min', description: 'Classic wok-fried rice.',
+      ),
+      MealModel(
+        id: '4', name: 'Mutton Tehari', kitchenName: 'Royal Foods', price: '৳320', rating: 4.9, time: '40 min', description: 'Fragrant mutton rice.',
+      ),
     ];
+
+    final filtered = allMeals.where((m) {
+      return m.name.toLowerCase().contains(query) || m.kitchenName.toLowerCase().contains(query);
+    }).toList();
+
+    if (filtered.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          children: [
+            Icon(Icons.search_off, size: 60, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('No meals found', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
 
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: meals.length,
+      itemCount: filtered.length,
       itemBuilder: (context, index) {
-        final m = meals[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Meal image placeholder
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
+        final m = filtered[index];
+        return GestureDetector(
+          onTap: () => context.push('/meal-detail', extra: m),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                child: const Icon(Icons.lunch_dining, color: Colors.orange, size: 32),
-              ),
-              const SizedBox(width: 14),
-              // Meal info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.lunch_dining, color: Colors.orange, size: 32),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      const SizedBox(height: 2),
+                      Text(m.kitchenName, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 14),
+                          Text(' ${m.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      m['name'] as String,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      m['kitchen'] as String,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 14),
-                        Text(
-                          ' ${m['rating']}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ],
+                    Text(m.price, style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.push('/meal-detail', extra: m);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Order', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
-              ),
-              // Price + Order button
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    m['price'] as String,
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text('Order', style: TextStyle(fontSize: 12)),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

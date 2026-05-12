@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../domain/service_model.dart';
+import '../../../core/providers/search_provider.dart';
 
-class ServicesScreen extends StatelessWidget {
+class ServicesScreen extends ConsumerWidget {
   const ServicesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchQuery = ref.watch(servicesSearchProvider).toLowerCase();
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(context),
+            _buildHeader(context, ref),
             _buildServiceCategories(),
-            _buildSectionHeader('Top Rated Providers'),
-            _buildProviderList(),
+            _buildSectionHeader(searchQuery.isEmpty ? 'Top Rated Providers' : 'Search Results'),
+            _buildFilteredProviders(context, searchQuery),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 60, 16, 24),
       decoration: const BoxDecoration(
@@ -55,10 +62,17 @@ class ServicesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           TextField(
+            onChanged: (value) => ref.read(servicesSearchProvider.notifier).state = value,
             decoration: InputDecoration(
               hintText: 'Search for services...',
               hintStyle: const TextStyle(color: Colors.grey),
               prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              suffixIcon: ref.watch(servicesSearchProvider).isNotEmpty 
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.grey),
+                    onPressed: () => ref.read(servicesSearchProvider.notifier).state = "",
+                  )
+                : null,
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
@@ -134,90 +148,124 @@ class ServicesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProviderList() {
-    final providers = [
-      {'name': 'Md. Karim', 'service': 'Plumbing', 'rating': 4.9, 'jobs': 120, 'color': Colors.blue},
-      {'name': 'Rahim Sheikh', 'service': 'AC Service', 'rating': 4.8, 'jobs': 95, 'color': Colors.cyan},
-      {'name': 'Abdul Hasan', 'service': 'Electrical', 'rating': 4.7, 'jobs': 80, 'color': Colors.orange},
+  Widget _buildFilteredProviders(BuildContext context, String query) {
+    final allProviders = [
+      ServiceModel(
+        id: '1',
+        name: 'AC Repair & Service',
+        providerName: 'Cooling Solutions Ltd.',
+        price: '৳1,200',
+        rating: 4.8,
+        description: 'Professional AC servicing including gas charging, filter cleaning, and full diagnostic checkup.',
+      ),
+      ServiceModel(
+        id: '2',
+        name: 'House Deep Cleaning',
+        providerName: 'Clean & Shine',
+        price: '৳2,500',
+        rating: 4.9,
+        description: 'Complete home deep cleaning service using premium non-toxic chemicals and professional equipment.',
+      ),
+      ServiceModel(
+        id: '3',
+        name: 'Professional Plumbing',
+        providerName: 'Expert Plumbers',
+        price: '৳500',
+        rating: 4.7,
+        description: 'Expert plumbing services for leak detection, pipe repair, and fixture installation.',
+      ),
     ];
+
+    final filtered = allProviders.where((p) {
+      return p.name.toLowerCase().contains(query) || p.providerName.toLowerCase().contains(query);
+    }).toList();
+
+    if (filtered.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          children: [
+            Icon(Icons.search_off, size: 60, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('No providers found', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
 
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: providers.length,
+      itemCount: filtered.length,
       itemBuilder: (context, index) {
-        final p = providers[index];
-        final color = p['color'] as Color;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Provider avatar
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: color.withOpacity(0.15),
-                child: Icon(Icons.person, color: color, size: 28),
-              ),
-              const SizedBox(width: 16),
-              // Provider info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        final p = filtered[index];
+        return GestureDetector(
+          onTap: () {
+            context.push('/service-detail', extra: p);
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: AppColors.servicesGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.person, color: AppColors.servicesGreen),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(p.providerName, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 14),
+                          Text(' ${p.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      p['name'] as String,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      p['service'] as String,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 14),
-                        Text(
-                          ' ${p['rating']}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                        const SizedBox(width: 12),
-                        Icon(Icons.work_outline, size: 14, color: Colors.grey[500]),
-                        Text(
-                          ' ${p['jobs']} jobs',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                        ),
-                      ],
+                    Text(p.price, style: const TextStyle(color: AppColors.servicesGreen, fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.push('/service-detail', extra: p);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.servicesGreen,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Book', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
-              ),
-              // Book button
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.servicesGreen,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-                child: const Text('Book', style: TextStyle(fontSize: 13)),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
