@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Login to continue to Boondhu E-Services',
+                      'Login to continue to Boondhu',
                       style: TextStyle(color: Colors.grey, fontSize: 15),
                     ),
                     const SizedBox(height: 32),
@@ -106,15 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
               letterSpacing: 2,
             ),
           ),
-          Text(
-            'E - S E R V I C E S',
-            style: TextStyle(
-              color: AppColors.accent,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 4,
-            ),
-          ),
+
         ],
       ),
     );
@@ -239,7 +231,10 @@ class _LoginScreenState extends State<LoginScreen> {
             Expanded(child: Divider()),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Or login with', style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'Or login with',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
             Expanded(child: Divider()),
           ],

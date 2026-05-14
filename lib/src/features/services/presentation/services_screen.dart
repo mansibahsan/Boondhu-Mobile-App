@@ -11,15 +11,18 @@ class ServicesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final searchQuery = ref.watch(servicesSearchProvider).toLowerCase();
+    final selectedCategory = ref.watch(servicesCategoryProvider);
 
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
             _buildHeader(context, ref),
-            _buildServiceCategories(),
-            _buildSectionHeader(searchQuery.isEmpty ? 'Top Rated Providers' : 'Search Results'),
-            _buildFilteredProviders(context, searchQuery),
+            _buildServiceCategories(ref, selectedCategory),
+            _buildSectionHeader(searchQuery.isEmpty 
+                ? (selectedCategory == 'All' ? 'Top Rated Providers' : '$selectedCategory Experts') 
+                : 'Search Results'),
+            _buildFilteredProviders(context, ref, searchQuery, selectedCategory),
             const SizedBox(height: 20),
           ],
         ),
@@ -86,8 +89,9 @@ class ServicesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildServiceCategories() {
+  Widget _buildServiceCategories(WidgetRef ref, String selected) {
     final categories = [
+      {'name': 'All', 'icon': Icons.grid_view, 'color': AppColors.servicesGreen},
       {'name': 'Plumbing', 'icon': Icons.plumbing, 'color': Colors.blue},
       {'name': 'Electrical', 'icon': Icons.electrical_services, 'color': Colors.orange},
       {'name': 'AC Service', 'icon': Icons.ac_unit, 'color': Colors.cyan},
@@ -105,31 +109,53 @@ class ServicesScreen extends ConsumerWidget {
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.82,
       ),
       itemCount: categories.length,
       itemBuilder: (context, index) {
         final cat = categories[index];
+        final name = cat['name'] as String;
         final color = cat['color'] as Color;
-        return Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: color.withOpacity(0.2)),
+        final isSelected = selected == name;
+
+        return GestureDetector(
+          onTap: () {
+            ref.read(servicesCategoryProvider.notifier).state = name;
+          },
+          child: Column(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isSelected ? color : color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: color.withOpacity(0.2)),
+                  boxShadow: isSelected ? [
+                    BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))
+                  ] : null,
+                ),
+                child: Icon(
+                  cat['icon'] as IconData, 
+                  color: isSelected ? Colors.white : color, 
+                  size: 26
+                ),
               ),
-              child: Icon(cat['icon'] as IconData, color: color, size: 26),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              cat['name'] as String,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                name,
+                style: TextStyle(
+                  fontSize: 10, 
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: isSelected ? color : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         );
       },
     );
@@ -148,7 +174,7 @@ class ServicesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFilteredProviders(BuildContext context, String query) {
+  Widget _buildFilteredProviders(BuildContext context, WidgetRef ref, String query, String selectedCat) {
     final allProviders = [
       ServiceModel(
         id: '1',
@@ -157,6 +183,7 @@ class ServicesScreen extends ConsumerWidget {
         price: '৳1,200',
         rating: 4.8,
         description: 'Professional AC servicing including gas charging, filter cleaning, and full diagnostic checkup.',
+        category: 'AC Service',
       ),
       ServiceModel(
         id: '2',
@@ -165,6 +192,7 @@ class ServicesScreen extends ConsumerWidget {
         price: '৳2,500',
         rating: 4.9,
         description: 'Complete home deep cleaning service using premium non-toxic chemicals and professional equipment.',
+        category: 'Cleaning',
       ),
       ServiceModel(
         id: '3',
@@ -173,21 +201,42 @@ class ServicesScreen extends ConsumerWidget {
         price: '৳500',
         rating: 4.7,
         description: 'Expert plumbing services for leak detection, pipe repair, and fixture installation.',
+        category: 'Plumbing',
+      ),
+      ServiceModel(
+        id: '4',
+        name: 'Master Electrician',
+        providerName: 'Current Fixers',
+        price: '৳800',
+        rating: 4.6,
+        description: 'Certified electrical repairs, wiring, and fan/light installations.',
+        category: 'Electrical',
+      ),
+      ServiceModel(
+        id: '5',
+        name: 'Exterior House Painting',
+        providerName: 'Colorful Living',
+        price: '৳15,000',
+        rating: 4.9,
+        description: 'Premium quality wall painting with weather-shield protection.',
+        category: 'Painting',
       ),
     ];
 
     final filtered = allProviders.where((p) {
-      return p.name.toLowerCase().contains(query) || p.providerName.toLowerCase().contains(query);
+      final matchesSearch = p.name.toLowerCase().contains(query) || p.providerName.toLowerCase().contains(query);
+      final matchesCategory = selectedCat == 'All' || p.category == selectedCat;
+      return matchesSearch && matchesCategory;
     }).toList();
 
     if (filtered.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
         child: Column(
           children: [
-            Icon(Icons.search_off, size: 60, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('No providers found', style: TextStyle(color: Colors.grey)),
+            Icon(Icons.search_off, size: 60, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            const Text('No providers found', style: TextStyle(color: Colors.grey)),
           ],
         ),
       );

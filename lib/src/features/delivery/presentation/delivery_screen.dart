@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/search_provider.dart';
 
-class DeliveryScreen extends StatelessWidget {
+class DeliveryScreen extends ConsumerWidget {
   const DeliveryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedCategory = ref.watch(deliveryCategoryProvider);
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
             _buildHeader(context),
-            _buildDeliveryTypes(context), // FIX: pass context
+            _buildDeliveryTypes(context, ref, selectedCategory),
             _buildSectionHeader('Active Deliveries'),
-            _buildActiveDeliveries(),
+            _buildActiveDeliveries(selectedCategory),
             _buildSectionHeader('Delivery Zones & SLA'),
             _buildZoneInfo(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 100), // Space for FAB
           ],
         ),
       ),
@@ -76,8 +80,9 @@ class DeliveryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDeliveryTypes(BuildContext context) {
+  Widget _buildDeliveryTypes(BuildContext context, WidgetRef ref, String selected) {
     final types = [
+      {'name': 'All', 'icon': Icons.grid_view, 'desc': 'Show all items'},
       {'name': 'Parcel', 'icon': Icons.inventory_2, 'desc': 'Send packages'},
       {'name': 'Document', 'icon': Icons.description, 'desc': 'Secure docs'},
       {'name': 'Store Order', 'icon': Icons.store, 'desc': 'e-Store items'},
@@ -93,35 +98,60 @@ class DeliveryScreen extends StatelessWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
+          childAspectRatio: 1.35, // FIXED: Increased aspect ratio to prevent overflow
         ),
         itemCount: types.length,
         itemBuilder: (context, index) {
           final t = types[index];
+          final name = t['name'] as String;
+          final isSelected = selected == name;
+
           return GestureDetector(
             onTap: () {
-              context.push('/parcel-info', extra: t['name'] as String);
+              ref.read(deliveryCategoryProvider.notifier).state = name;
+              if (name != 'All') {
+                context.push('/parcel-info', extra: name);
+              }
             },
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.deliveryPurple.withOpacity(0.08),
+                color: isSelected ? AppColors.deliveryPurple : AppColors.deliveryPurple.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.deliveryPurple.withOpacity(0.15)),
+                border: Border.all(
+                  color: isSelected ? AppColors.deliveryPurple : AppColors.deliveryPurple.withOpacity(0.15)
+                ),
+                boxShadow: isSelected ? [
+                  BoxShadow(color: AppColors.deliveryPurple.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))
+                ] : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(t['icon'] as IconData, color: AppColors.deliveryPurple, size: 28),
+                  Icon(
+                    t['icon'] as IconData, 
+                    color: isSelected ? Colors.white : AppColors.deliveryPurple, 
+                    size: 28
+                  ),
                   const SizedBox(height: 8),
                   Text(
-                    t['name'] as String,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 14,
+                      color: isSelected ? Colors.white : Colors.black87,
+                    ),
                   ),
                   Text(
                     t['desc'] as String,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 11, 
+                      color: isSelected ? Colors.white.withOpacity(0.8) : Colors.grey[600]
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -145,8 +175,8 @@ class DeliveryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActiveDeliveries() {
-    final deliveries = [
+  Widget _buildActiveDeliveries(String category) {
+    final allDeliveries = [
       {
         'id': '#BD-2847',
         'from': 'Mymensingh Sadar',
@@ -154,6 +184,7 @@ class DeliveryScreen extends StatelessWidget {
         'status': 'In Transit',
         'statusColor': Colors.orange,
         'eta': '2 hours',
+        'type': 'Parcel',
       },
       {
         'id': '#BD-2843',
@@ -162,16 +193,43 @@ class DeliveryScreen extends StatelessWidget {
         'status': 'Delivered',
         'statusColor': Colors.green,
         'eta': 'Completed',
+        'type': 'Document',
+      },
+      {
+        'id': '#BD-2901',
+        'from': 'Boondhu Mart',
+        'to': 'Mymensingh Sadar',
+        'status': 'Picking Up',
+        'statusColor': Colors.blue,
+        'eta': '15 mins',
+        'type': 'Store Order',
       },
     ];
+
+    final filtered = allDeliveries.where((d) => 
+      category == 'All' || d['type'] == category
+    ).toList();
+
+    if (filtered.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          children: [
+            Icon(Icons.inventory_2_outlined, size: 40, color: Colors.grey[300]),
+            const SizedBox(height: 8),
+            Text('No active $category deliveries', style: const TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
 
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: deliveries.length,
+      itemCount: filtered.length,
       itemBuilder: (context, index) {
-        final d = deliveries[index];
+        final d = filtered[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -191,9 +249,25 @@ class DeliveryScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    d['id'] as String,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  Row(
+                    children: [
+                      Text(
+                        d['id'] as String,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          d['type'] as String,
+                          style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),

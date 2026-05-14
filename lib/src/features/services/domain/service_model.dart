@@ -5,6 +5,7 @@ class ServiceModel {
   final String price;
   final double rating;
   final String description;
+  final String category; // NEW: Added category field
 
   ServiceModel({
     required this.id,
@@ -13,5 +14,6 @@ class ServiceModel {
     required this.price,
     required this.rating,
     required this.description,
+    required this.category,
   });
 }

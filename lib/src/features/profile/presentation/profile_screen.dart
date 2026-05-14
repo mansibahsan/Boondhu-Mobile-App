@@ -41,7 +41,7 @@ class ProfileScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Nasim Khan',
+                'Mansib',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -49,7 +49,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
               Text(
-                'nasim@boondhu.xyz',
+                'mansib@boondhu.xyz',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
                   fontSize: 14,

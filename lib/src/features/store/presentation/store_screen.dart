@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../domain/product.dart';
 import '../data/cart_provider.dart';
-import '../../../core/providers/search_provider.dart'; // ADDED
+import '../../../core/providers/search_provider.dart';
 
 class StoreScreen extends ConsumerWidget {
   const StoreScreen({super.key});
@@ -12,34 +12,41 @@ class StoreScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cartItems = ref.watch(cartProvider);
-    final searchQuery = ref.watch(storeSearchProvider).toLowerCase(); // WATCH SEARCH
+    final searchQuery = ref.watch(storeSearchProvider).toLowerCase();
+    final selectedCategory = ref.watch(storeCategoryProvider); // WATCH CATEGORY
 
-    // Original list of products
+    // Original list of products with categories
     final allProducts = [
-      Product(id: '1', name: 'Basmati Rice 5kg', price: '৳580', rating: 4.8, image: ''),
-      Product(id: '2', name: 'Fresh Milk 1L', price: '৳95', rating: 4.9, image: ''),
-      Product(id: '3', name: 'Hand Sanitizer', price: '৳120', rating: 4.5, image: ''),
-      Product(id: '4', name: 'Baby Diapers', price: '৳450', rating: 4.7, image: ''),
-      Product(id: '5', name: 'Paracetamol 500mg', price: '৳35', rating: 4.6, image: ''),
-      Product(id: '6', name: 'Cooking Oil 1L', price: '৳220', rating: 4.4, image: ''),
+      Product(id: '1', name: 'Basmati Rice 5kg', price: '৳580', rating: 4.8, image: '', category: 'Groceries'),
+      Product(id: '2', name: 'Fresh Milk 1L', price: '৳95', rating: 4.9, image: '', category: 'Groceries'),
+      Product(id: '3', name: 'Hand Sanitizer', price: '৳120', rating: 4.5, image: '', category: 'Medicine'),
+      Product(id: '4', name: 'Baby Diapers', price: '৳450', rating: 4.7, image: '', category: 'Baby Care'),
+      Product(id: '5', name: 'Paracetamol 500mg', price: '৳35', rating: 4.6, image: '', category: 'Medicine'),
+      Product(id: '6', name: 'Cooking Oil 1L', price: '৳220', rating: 4.4, image: '', category: 'Groceries'),
+      Product(id: '7', name: 'Glass Cleaner', price: '৳180', rating: 4.3, image: '', category: 'Cleaning'),
+      Product(id: '8', name: 'Baby Lotion', price: '৳280', rating: 4.8, image: '', category: 'Baby Care'),
     ];
 
-    // --- FILTER PRODUCTS BASED ON SEARCH ---
+    // --- FILTER PRODUCTS BASED ON SEARCH AND CATEGORY ---
     final filteredProducts = allProducts.where((p) {
-      return p.name.toLowerCase().contains(searchQuery);
+      final matchesSearch = p.name.toLowerCase().contains(searchQuery);
+      final matchesCategory = selectedCategory == 'All' || p.category == selectedCategory;
+      return matchesSearch && matchesCategory;
     }).toList();
 
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(context, ref, cartItems.length), // Pass ref
-            _buildCategories(),
-            _buildSectionHeader(searchQuery.isEmpty ? 'Popular Products' : 'Search Results'),
+            _buildHeader(context, ref, cartItems.length),
+            _buildCategories(ref, selectedCategory), // Pass ref and selected
+            _buildSectionHeader(searchQuery.isEmpty 
+                ? (selectedCategory == 'All' ? 'Popular Products' : '$selectedCategory') 
+                : 'Search Results'),
             if (filteredProducts.isEmpty)
               _buildNoResults()
             else
-              _buildProductGrid(ref, filteredProducts), // Pass filtered list
+              _buildProductGrid(ref, filteredProducts),
           ],
         ),
       ),
@@ -106,10 +113,9 @@ class StoreScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
-          // --- CONNECTED SEARCH BAR ---
           TextField(
             onChanged: (value) {
-              ref.read(storeSearchProvider.notifier).state = value; // UPDATE SEARCH
+              ref.read(storeSearchProvider.notifier).state = value;
             },
             decoration: InputDecoration(
               hintText: 'Search products...',
@@ -131,8 +137,9 @@ class StoreScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCategories() {
+  Widget _buildCategories(WidgetRef ref, String selected) {
     final categories = [
+      {'name': 'All', 'icon': Icons.grid_view}, // Added 'All'
       {'name': 'Medicine', 'icon': Icons.medical_services},
       {'name': 'Groceries', 'icon': Icons.shopping_basket},
       {'name': 'Baby Care', 'icon': Icons.child_care},
@@ -147,21 +154,47 @@ class StoreScreen extends ConsumerWidget {
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final cat = categories[index];
-          return Container(
-            width: 80,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: AppColors.storeBlue.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.storeBlue.withOpacity(0.15)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(cat['icon'] as IconData, color: AppColors.storeBlue, size: 28),
-                const SizedBox(height: 6),
-                Text(cat['name'] as String, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
-              ],
+          final name = cat['name'] as String;
+          final isSelected = selected == name;
+
+          return GestureDetector(
+            onTap: () {
+              ref.read(storeCategoryProvider.notifier).state = name; // Update category
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 80,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.storeBlue : AppColors.storeBlue.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? AppColors.storeBlue : AppColors.storeBlue.withOpacity(0.15)
+                ),
+                boxShadow: isSelected ? [
+                  BoxShadow(color: AppColors.storeBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))
+                ] : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    cat['icon'] as IconData, 
+                    color: isSelected ? Colors.white : AppColors.storeBlue, 
+                    size: 28
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    name, 
+                    style: TextStyle(
+                      fontSize: 11, 
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : Colors.black87,
+                    ), 
+                    textAlign: TextAlign.center
+                  ),
+                ],
+              ),
             ),
           );
         },
