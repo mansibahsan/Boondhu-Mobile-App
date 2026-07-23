@@ -1,0 +1,24 @@
+/* Boondhu Admin — Custom Styles */
+
+/* Center the brand logo + text in sidebar header */
+.brand-link {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.brand-link .brand-image {
+    max-height: 33px;
+    margin-right: 8px;
+    float: none !important;
+}
+
+.brand-link .brand-text {
+    float: none !important;
+}
+
+/* Center the login logo */
+.login-logo img {
+    display: block;
+    margin: 0 auto;
+}
